@@ -1,0 +1,83 @@
+{% extends 'tours/base.html' %}
+
+{% load tour_extras %} 
+
+{% block content %}
+<h1>Your Tours</h1>
+
+<div class="mb-3">
+    <a href="{% url 'tour-create' %}" class="btn btn-primary">Add New Tour</a>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Tour Type</th>
+                <th>PAX</th>
+                <th>Tips (CZK)</th>
+                <th>Payin (CZK)</th>
+                <th>Profit (CZK)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tour in tours %}
+            <tr>
+                <td>{{ tour.tour_date|date:"Y-m-d" }}</td>
+                <td>{{ tour.tour_type }}</td>
+                <td>{{ tour.pax_count }}</td>
+                <td>{% with total_tips=tour.tips.all|sum_tips_czk %}{{ total_tips|default:"0"|floatformat:2 }}{% endwith %}</td>
+                <td>{{ tour.calculate_payin|floatformat:2 }}</td>
+                <td>{{ tour.calculate_profit|floatformat:2 }}</td>
+                <td>
+                    <a href="{% url 'tour-detail' tour.pk %}" class="btn btn-sm btn-info">View</a>
+                    <a href="{% url 'tour-update' tour.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">No tours found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if is_paginated %}
+<nav>
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1">&laquo; First</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active">
+                <span class="page-link">{{ num }}</span>
+            </li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

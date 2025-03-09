@@ -1,0 +1,14 @@
+{% extends 'tours/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+  <div class="container">
+    <h1>{% if object %}Edit Tour{% else %}Create Tour{% endif %}</h1>
+    <form method="post">
+      {% csrf_token %}
+      {{ form|crispy }}
+      <button type="submit" class="btn btn-primary">Submit</button>
+      <a href="{% if object %}{% url 'tour-detail' pk=object.pk %}{% else %}{% url 'tour-list' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends 'tours/base.html' %}
+{% load tour_extras %}
+
+{% block content %}
+<div class="container">
+    <h1>Tour Details</h1>
+
+    <dl class="row">
+        <dt class="col-sm-3">Tour Type</dt>
+        <dd class="col-sm-9">{{ tour.tour_type }}</dd>
+
+        <dt class="col-sm-3">Date and Time</dt>
+        <dd class="col-sm-9">{{ tour.date_time }}</dd>
+
+        <dt class="col-sm-3">Pax Count</dt>
+        <dd class="col-sm-9">{{ tour.pax_count }}</dd>
+
+        <dt class="col-sm-3">Notes</dt>
+        <dd class="col-sm-9">{{ tour.notes }}</dd>
+
+        <dt class="col-sm-3">Payin</dt>
+        <dd class="col-sm-9">{{ payin }}</dd>
+
+        <dt class="col-sm-3">Total Tips (CZK)</dt>
+        <dd class="col-sm-9">{{ total_tips_czk }}</dd>
+
+        <dt class="col-sm-3">Profit</dt>
+        <dd class="col-sm-9">{{ profit }}</dd>
+
+        <dt class="col-sm-3">Tips per Pax</dt>
+        <dd class="col-sm-9">{{ tips_per_pax|floatformat:2 }}</dd>
+    </dl>
+
+    <h2>Tips</h2>
+    <a href="{% url 'tip-create' tour_id=tour.pk %}" class="btn btn-success mb-3">Add Tip</a>
+    {% if tips %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Amount</th>
+                    <th>Currency</th>
+                    <th>Amount in CZK</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tip in tips %}
+                <tr>
+                    <td>{{ tip.amount }}</td>
+                    <td>{{ tip.currency }}</td>
+                    <td>{{ tip.amount_in_czk }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No tips yet.</p>
+    {% endif %}
+    <a href="{% url 'tour-update' pk=tour.pk %}" class="btn btn-primary">Edit</a>
+    <a href="{% url 'tour-list' %}" class="btn btn-secondary">Back to List</a>
+</div>
+{% endblock %}
