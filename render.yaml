@@ -1,0 +1,22 @@
+databases:
+  - name: tour_trackerdb
+    plan: free
+    databaseName: tour_tracker
+    user: fajlajpi
+
+services:
+  - type: web
+    plan: free
+    name: tour_tracker
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "python -m gunicorn tour_tracker.asgi:application -k uvicorn.workers.UvicornWorker"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tour_trackerdb
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: 4
