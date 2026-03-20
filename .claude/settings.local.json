@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python manage.py makemigrations tours --name food_tour_fields)"
+      "Bash(python manage.py makemigrations tours --name food_tour_fields)",
+      "Bash(python manage.py migrate)"
     ]
   }
 }

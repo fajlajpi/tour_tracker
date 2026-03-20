@@ -12,6 +12,7 @@ urlpatterns = [
     path('tip/<int:pk>/edit/', views.TipUpdateView.as_view(), name='tip-update'),
     path('tip/<int:pk>/delete/', views.TipDeleteView.as_view(), name='tip-delete'),
     path('stats/', views.MonthlyStatsView.as_view(), name='current-stats'),
+    path('stats/cash-report/', views.MonthlyCashReportView.as_view(), name='cash-report'),
     path('stats/yearly/', views.YearlyStatsView.as_view(), name='yearly-stats'),
     path('rates/', views.ExchangeRateView.as_view(), name='exchange-rates'),
     path('rates/fetch-cnb/', views.CNBFetchView.as_view(), name='cnb-fetch'),

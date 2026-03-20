@@ -10,7 +10,8 @@ class TourTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Currency)
 class CurrencyAdmin(admin.ModelAdmin):
-    list_display = ('code', 'name')
+    list_display = ('code', 'name', 'is_cashless')
+    list_editable = ('is_cashless',)
     search_fields = ('code', 'name')
 
 

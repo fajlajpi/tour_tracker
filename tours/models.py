@@ -15,8 +15,12 @@ class TourType(models.Model):
 
 
 class Currency(models.Model):
-    code = models.CharField(max_length=3, unique=True)  # EUR, USD, CZK, etc.
+    code = models.CharField(max_length=10, unique=True)  # EUR, USD, CZK, SUM, etc.
     name = models.CharField(max_length=100)
+    is_cashless = models.BooleanField(
+        default=False,
+        help_text="Cashless/card payments (e.g. SUM). These go to the account, not the cash box."
+    )
 
     def __str__(self):
         return self.code

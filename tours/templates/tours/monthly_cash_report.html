@@ -1,0 +1,148 @@
+{% extends 'tours/base.html' %}
+{% load tour_extras %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Monthly Cash Report</h1>
+    <a href="{% url 'current-stats' %}?year={{ current_year }}&month={{ current_month }}"
+       class="btn btn-outline-secondary">
+        &larr; Back to Monthly Stats
+    </a>
+</div>
+
+{# ── Period selector ───────────────────────────────────────────────────────── #}
+<form method="get" class="row g-2 align-items-end mb-4" id="reportForm">
+    <div class="col-auto">
+        <label class="form-label mb-1">Year</label>
+        <select class="form-select" name="year" id="yearSelect">
+            {% for y in available_years %}
+            <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+            {% empty %}
+            <option value="{{ current_year }}">{{ current_year }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label mb-1">Month</label>
+        <select class="form-select" name="month" id="monthSelect">
+            {% for month_num, month_label in available_months %}
+            <option value="{{ month_num }}" {% if month_num == current_month %}selected{% endif %}>{{ month_label }}</option>
+            {% empty %}
+            <option value="{{ current_month }}">{{ current_month_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">View</button>
+    </div>
+</form>
+
+<h2 class="mb-4">{{ current_month_name }} {{ current_year }}</h2>
+
+{% if tours %}
+
+{# ── 1. Cash box by foreign currency ──────────────────────────────────────── #}
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white fw-semibold">
+        Cash Box &mdash; Foreign Currencies
+    </div>
+    <div class="card-body p-0">
+        {% if box_by_currency %}
+        <table class="table table-sm mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Currency</th>
+                    <th class="text-end">Amount in Box</th>
+                    <th class="text-end">CZK Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for code, data in box_by_currency.items %}
+                <tr>
+                    <td><span class="badge bg-secondary fs-6">{{ code }}</span></td>
+                    <td class="text-end fs-5 fw-semibold">{{ data.amount|floatformat:2 }}</td>
+                    <td class="text-end text-muted">≈ {{ data.czk_value|floatformat:0 }} CZK</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted p-3 mb-0">No foreign-currency cash tips this month.</p>
+        {% endif %}
+    </div>
+</div>
+
+{# ── 2. CZK in box ────────────────────────────────────────────────────────── #}
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white fw-semibold">
+        Cash Box &mdash; CZK
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-sm-4">
+                <div class="text-muted small">CZK tips collected</div>
+                <div class="fs-4 fw-semibold">{{ czk_tips_total|floatformat:0 }} CZK</div>
+            </div>
+            <div class="col-sm-4">
+                <div class="text-muted small">Food tour expenses paid out</div>
+                <div class="fs-4 fw-semibold text-danger">&minus; {{ food_expenses_total|floatformat:0 }} CZK</div>
+            </div>
+            <div class="col-sm-4">
+                <div class="text-muted small">Net CZK in box</div>
+                <div class="fs-3 fw-bold {% if czk_in_box >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
+                    {{ czk_in_box|floatformat:0 }} CZK
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── 3. Account (cashless) ────────────────────────────────────────────────── #}
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white fw-semibold">
+        Account &mdash; Cashless / Card Payments
+    </div>
+    <div class="card-body">
+        {% if cashless_czk_total %}
+        <div class="text-muted small">Total cashless tips (CZK equivalent)</div>
+        <div class="fs-3 fw-bold profit-positive">{{ cashless_czk_total|floatformat:0 }} CZK</div>
+        {% else %}
+        <p class="text-muted mb-0">No cashless tips recorded this month.</p>
+        {% endif %}
+    </div>
+</div>
+
+{# ── 4. Settlement / Payin ────────────────────────────────────────────────── #}
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white fw-semibold">
+        Monthly Settlement with Prague Pulse Tours
+    </div>
+    <div class="card-body">
+        <div class="fs-3 fw-bold {% if total_settlement < 0 %}profit-positive{% elif total_settlement > 0 %}profit-negative{% endif %}">
+            {{ total_settlement|floatformat:0 }} CZK
+        </div>
+        <div class="text-muted mt-1">
+            {% if total_settlement < 0 %}
+                Prague Pulse Tours pays you {{ total_settlement|floatformat:0|slice:"1:" }} CZK &mdash; issue an invoice.
+            {% elif total_settlement > 0 %}
+                You pay Prague Pulse Tours {{ total_settlement|floatformat:0 }} CZK &mdash; set aside for payin.
+            {% else %}
+                Settled &mdash; nothing owed either way.
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% else %}
+<p class="text-muted">No tours found for the selected period.</p>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('yearSelect').addEventListener('change', function () {
+        document.getElementById('reportForm').submit();
+    });
+</script>
+{% endblock %}

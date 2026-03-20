@@ -428,6 +428,82 @@ class MonthlyStatsView(LoginRequiredMixin, ListView):
         return context
 
 
+class MonthlyCashReportView(LoginRequiredMixin, ListView):
+    model = Tour
+    template_name = 'tours/monthly_cash_report.html'
+    context_object_name = 'tours'
+
+    def _get_year_month(self):
+        today = datetime.now()
+        try:
+            year = int(self.request.GET.get('year', today.year))
+            month = int(self.request.GET.get('month', today.month))
+        except ValueError:
+            year, month = today.year, today.month
+        return year, month
+
+    def get_queryset(self):
+        year, month = self._get_year_month()
+        return (
+            Tour.objects
+            .filter(tour_date__year=year, tour_date__month=month)
+            .order_by('tour_date')
+            .select_related('tour_type')
+            .prefetch_related('tips__currency')
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        year, month = self._get_year_month()
+        tours = list(self.get_queryset())
+
+        # --- cash box: sum tips by currency (non-cashless, non-CZK) ---
+        box_by_currency = defaultdict(lambda: {'amount': 0, 'czk_value': 0})
+        czk_tips_total = 0
+        cashless_czk_total = 0
+        food_expenses_total = 0
+
+        for tour in tours:
+            for tip in tour.tips.all():
+                currency = tip.currency
+                if currency.is_cashless:
+                    cashless_czk_total += tip.amount_in_czk()
+                elif currency.code == 'CZK':
+                    czk_tips_total += tip.amount
+                else:
+                    box_by_currency[currency.code]['amount'] += tip.amount
+                    box_by_currency[currency.code]['czk_value'] += tip.amount_in_czk()
+
+            if tour.tour_type.is_food_tour:
+                food_expenses_total += tour.get_total_expenses()
+
+        czk_in_box = czk_tips_total - food_expenses_total
+
+        # total settlement (positive = guide pays Pulse, negative = Pulse pays guide)
+        total_settlement = sum(t.get_settlement_contribution() for t in tours)
+
+        periods = _available_periods()
+        available_years = sorted(set(d.year for d in periods))
+        available_months = [
+            (d.month, month_name[d.month]) for d in periods if d.year == year
+        ]
+
+        context.update({
+            'current_year': year,
+            'current_month': month,
+            'current_month_name': month_name[month],
+            'available_years': available_years,
+            'available_months': available_months,
+            'box_by_currency': dict(box_by_currency),
+            'czk_tips_total': czk_tips_total,
+            'food_expenses_total': food_expenses_total,
+            'czk_in_box': czk_in_box,
+            'cashless_czk_total': cashless_czk_total,
+            'total_settlement': total_settlement,
+        })
+        return context
+
+
 class YearlyStatsView(LoginRequiredMixin, ListView):
     model = Tour
     template_name = 'tours/yearly_stats.html'
