@@ -2,13 +2,187 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
-  <div class="container">
-    <h1>{% if object %}Edit Tour{% else %}Create Tour{% endif %}</h1>
-    <form method="post">
-      {% csrf_token %}
-      {{ form|crispy }}
-      <button type="submit" class="btn btn-primary">Submit</button>
-      <a href="{% if object %}{% url 'tour-detail' pk=object.pk %}{% else %}{% url 'tour-list' %}{% endif %}" class="btn btn-secondary">Cancel</a>
-    </form>
-  </div>
+<div class="row justify-content-center">
+<div class="col-md-9 col-lg-7">
+
+<h1 class="mb-4">{% if object %}Edit Tour{% else %}Add Tour{% endif %}</h1>
+
+<form method="post" id="tourForm">
+    {% csrf_token %}
+
+    {# ── Tour fields ──────────────────────────────────────────────────────── #}
+    {{ form.tour_type|as_crispy_field }}
+    {{ form.tour_date|as_crispy_field }}
+    {{ form.pax_count|as_crispy_field }}
+    {{ form.notes|as_crispy_field }}
+
+    {# ── Food Tour section (shown/hidden by JS) ───────────────────────────── #}
+    <div id="foodTourFields" style="display:none;">
+        <hr>
+        <h5 class="mb-3">Food Tour Details</h5>
+        {{ form.fixed_income|as_crispy_field }}
+        <p class="text-muted small mb-2">Record expenses at up to 3 locations (reimbursed at month end).</p>
+        <div class="row g-2 mb-2">
+            <div class="col-7">{{ form.expense_1_name|as_crispy_field }}</div>
+            <div class="col-5">{{ form.expense_1_amount|as_crispy_field }}</div>
+        </div>
+        <div class="row g-2 mb-2">
+            <div class="col-7">{{ form.expense_2_name|as_crispy_field }}</div>
+            <div class="col-5">{{ form.expense_2_amount|as_crispy_field }}</div>
+        </div>
+        <div class="row g-2 mb-2">
+            <div class="col-7">{{ form.expense_3_name|as_crispy_field }}</div>
+            <div class="col-5">{{ form.expense_3_amount|as_crispy_field }}</div>
+        </div>
+    </div>
+
+    {# ── Tips ─────────────────────────────────────────────────────────────── #}
+    <hr>
+    <h5 class="mb-1">Tips <span class="text-muted fw-normal fs-6">— optional</span></h5>
+    <p class="text-muted small mb-3">Add tips now or from the tour detail page later.</p>
+
+    {{ tip_formset.management_form }}
+
+    {# Formset errors #}
+    {% if tip_formset.non_form_errors %}
+    <div class="alert alert-danger">{{ tip_formset.non_form_errors }}</div>
+    {% endif %}
+
+    <div id="tip-form-container">
+        {% for tform in tip_formset %}
+        <div class="tip-form-row row g-2 align-items-center mb-2{% if tform.instance.pk %} existing-tip{% else %} new-tip{% endif %}">
+            {# Hidden id field for existing tips #}
+            <div class="d-none">{{ tform.id }}</div>
+            {# Hidden DELETE checkbox — triggered by the delete button #}
+            <div class="d-none delete-checkbox-wrap">{{ tform.DELETE }}</div>
+
+            <div class="col-auto">
+                <label class="visually-hidden">Amount</label>
+                {{ tform.amount }}
+                {% if tform.amount.errors %}
+                <div class="text-danger small">{{ tform.amount.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+            <div class="col-auto">
+                <label class="visually-hidden">Currency</label>
+                {{ tform.currency }}
+            </div>
+            <div class="col-auto">
+                {% if tform.instance.pk %}
+                <button type="button" class="btn btn-sm btn-outline-danger tip-delete-btn"
+                        title="Remove this tip on save">Delete</button>
+                {% else %}
+                <button type="button" class="btn btn-sm btn-outline-secondary tip-remove-btn">Remove</button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <button type="button" class="btn btn-sm btn-outline-success mb-3" id="add-tip-btn">+ Add Tip</button>
+
+    {# Empty form template — rendered by Django, cloned by JS, never submitted as-is #}
+    <template id="empty-tip-template">
+        <div class="tip-form-row new-tip row g-2 align-items-center mb-2">
+            <div class="col-auto">
+                <label class="visually-hidden">Amount</label>
+                {{ tip_formset.empty_form.amount }}
+            </div>
+            <div class="col-auto">
+                <label class="visually-hidden">Currency</label>
+                {{ tip_formset.empty_form.currency }}
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-sm btn-outline-secondary tip-remove-btn">Remove</button>
+            </div>
+        </div>
+    </template>
+
+    {# ── Submit ───────────────────────────────────────────────────────────── #}
+    <div class="mt-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="{% if object %}{% url 'tour-detail' pk=object.pk %}{% else %}{% url 'tour-list' %}{% endif %}"
+           class="btn btn-outline-secondary">Cancel</a>
+        {% if object %}
+        <a href="{% url 'tour-delete' pk=object.pk %}" class="btn btn-outline-danger ms-auto">Delete Tour</a>
+        {% endif %}
+    </div>
+</form>
+
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ── Food tour field toggle ──────────────────────────────────────────────
+    const foodTourTypeIds = {{ form.food_tour_type_ids_json }};
+    const tourTypeSelect  = document.getElementById('id_tour_type');
+    const foodTourFields  = document.getElementById('foodTourFields');
+
+    function toggleFoodTourFields() {
+        const selected = parseInt(tourTypeSelect.value, 10);
+        foodTourFields.style.display = foodTourTypeIds.includes(selected) ? 'block' : 'none';
+    }
+    tourTypeSelect.addEventListener('change', toggleFoodTourFields);
+    toggleFoodTourFields();
+
+    // ── Tip formset ────────────────────────────────────────────────────────
+    const container    = document.getElementById('tip-form-container');
+    const addBtn       = document.getElementById('add-tip-btn');
+    const emptyTpl     = document.getElementById('empty-tip-template');
+    const totalForms   = document.getElementById('id_tips-TOTAL_FORMS');
+    const initialForms = parseInt(document.getElementById('id_tips-INITIAL_FORMS').value, 10);
+
+    // Wire up delete buttons on existing (saved) tips
+    container.querySelectorAll('.tip-delete-btn').forEach(attachDeleteHandler);
+
+    // Add a new blank tip row
+    addBtn.addEventListener('click', function () {
+        const idx   = parseInt(totalForms.value, 10);
+        const clone = emptyTpl.content.cloneNode(true);
+        const row   = clone.querySelector('.tip-form-row');
+
+        // Replace Django's __prefix__ placeholder with the real index
+        row.innerHTML = row.innerHTML.replace(/__prefix__/g, idx);
+
+        row.querySelector('.tip-remove-btn').addEventListener('click', removeNewRow);
+        container.appendChild(row);
+        totalForms.value = idx + 1;
+    });
+
+    // Mark an existing tip for deletion (checked DELETE checkbox, visual feedback)
+    function attachDeleteHandler(btn) {
+        btn.addEventListener('click', function () {
+            const row        = this.closest('.tip-form-row');
+            const deleteBox  = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+            if (deleteBox) {
+                deleteBox.checked      = true;
+                row.style.opacity      = '0.35';
+                row.style.pointerEvents = 'none';
+                this.textContent       = 'Deleted';
+            }
+        });
+    }
+
+    // Remove an unsaved (new) tip row and renumber remaining new rows
+    function removeNewRow() {
+        this.closest('.tip-form-row').remove();
+        renumberNewForms();
+    }
+
+    function renumberNewForms() {
+        const newRows = container.querySelectorAll('.new-tip');
+        newRows.forEach(function (row, idx) {
+            const realIdx = initialForms + idx;
+            row.querySelectorAll('[name]').forEach(function (el) {
+                el.name = el.name.replace(/tips-\d+/, 'tips-' + realIdx);
+            });
+            row.querySelectorAll('[id]').forEach(function (el) {
+                el.id = el.id.replace(/id_tips-\d+/, 'id_tips-' + realIdx);
+            });
+        });
+        totalForms.value = initialForms + newRows.length;
+    }
+</script>
 {% endblock %}

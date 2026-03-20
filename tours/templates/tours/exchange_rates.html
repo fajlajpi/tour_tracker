@@ -1,0 +1,78 @@
+{% extends 'tours/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<h1 class="mb-4">Exchange Rates</h1>
+
+<div class="row g-4 mb-5">
+
+    {# ── CNB Auto-Fetch ───────────────────────────────────────────────────── #}
+    <div class="col-md-5">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Fetch from Czech National Bank</div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Pulls today's official CNB rates for all currencies in your database.
+                    CNB publishes on business days only — weekends and holidays return the
+                    nearest prior business day.
+                </p>
+                <form method="post" action="{% url 'cnb-fetch' %}">
+                    {% csrf_token %}
+                    {{ fetch_form|crispy }}
+                    <button type="submit" class="btn btn-primary mt-2">Fetch Rates</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {# ── Manual Entry ─────────────────────────────────────────────────────── #}
+    <div class="col-md-5">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Add / Update Rate Manually</div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Enter the rate as how many CZK one unit of the foreign currency equals
+                    (e.g., 1 EUR = 25.44 CZK → enter 25.44).
+                    Saving an existing currency+date combination overwrites the old rate.
+                </p>
+                <form method="post" action="{% url 'exchange-rates' %}">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <button type="submit" class="btn btn-success mt-2">Save Rate</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{# ── Rate history ─────────────────────────────────────────────────────────── #}
+<h2 class="mb-3">Recent Rates</h2>
+{% if rates_by_date %}
+{% for rate_date, day_rates in rates_by_date.items %}
+<div class="mb-3">
+    <h6 class="text-muted mb-1">{{ rate_date|date:"Y-m-d" }}
+        <span class="fw-normal">({{ rate_date|date:"l" }})</span>
+    </h6>
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered mb-0" style="max-width:400px;">
+            <thead class="table-light">
+                <tr><th>Currency</th><th>Rate to CZK</th></tr>
+            </thead>
+            <tbody>
+                {% for rate in day_rates %}
+                <tr>
+                    <td>{{ rate.currency.code }} — {{ rate.currency.name }}</td>
+                    <td>{{ rate.rate_to_czk }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<p class="text-muted">No exchange rates recorded yet. Use the CNB fetch or add one manually above.</p>
+{% endif %}
+
+{% endblock %}

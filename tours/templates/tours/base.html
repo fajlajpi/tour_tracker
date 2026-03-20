@@ -4,6 +4,10 @@
     <title>Tour Guide Tracker</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .profit-positive { color: #198754; font-weight: 600; }
+        .profit-negative { color: #dc3545; font-weight: 600; }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -21,6 +25,12 @@
                         <a class="nav-link" href="{% url 'current-stats' %}">Monthly Stats</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{% url 'yearly-stats' %}">Yearly Stats</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'exchange-rates' %}">Rates</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{% url 'tour-create' %}">Add Tour</a>
                     </li>
                     <li class="nav-item">
@@ -32,9 +42,26 @@
     </nav>
 
     <div class="container my-4">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
         {% block content %}{% endblock %}
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialise Bootstrap tooltips globally
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+                new bootstrap.Tooltip(el, { trigger: 'hover focus' });
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

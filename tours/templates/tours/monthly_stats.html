@@ -1,105 +1,114 @@
 {% extends 'tours/base.html' %}
-
 {% load tour_extras %}
 
 {% block content %}
-<h1>Monthly Statistics</h1>
+<h1 class="mb-4">Monthly Statistics</h1>
 
-<form method="get">
-    <div class="form-group">
-        <label for="year">Year:</label>
-        <select class="form-control" id="year" name="year">
-            {% for year in years %}
-                <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+{# ── Period selector ──────────────────────────────────────────────────────── #}
+<form method="get" class="row g-2 align-items-end mb-4" id="statsForm">
+    <div class="col-auto">
+        <label class="form-label mb-1">Year</label>
+        <select class="form-select" name="year" id="yearSelect">
+            {% for y in available_years %}
+            <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+            {% empty %}
+            <option value="{{ current_year }}">{{ current_year }}</option>
             {% endfor %}
         </select>
     </div>
-    <div class="form-group">
-        <label for="month">Month:</label>
-        <select class="form-control" id="month" name="month">
-            {% for month_num, month_name in months %}
-                <option value="{{ month_num }}" {% if month_num == current_month %}selected{% endif %}>{{ month_name }}</option>
+    <div class="col-auto">
+        <label class="form-label mb-1">Month</label>
+        <select class="form-select" name="month" id="monthSelect">
+            {% for month_num, month_label in available_months %}
+            <option value="{{ month_num }}" {% if month_num == current_month %}selected{% endif %}>{{ month_label }}</option>
+            {% empty %}
+            <option value="{{ current_month }}">{{ current_month_name }}</option>
             {% endfor %}
         </select>
     </div>
-    <button type="submit" class="btn btn-primary">View Statistics</button>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">View</button>
+    </div>
 </form>
 
-<br>
 {% if monthly_stats %}
-<h2>Statistics for {{ current_month }}/{{ current_year }}</h2>
-<div class="row mb-4">
-    <div class="col-md-3">
+
+{# ── Summary cards ────────────────────────────────────────────────────────── #}
+<h2 class="mb-3">{{ current_month_name }} {{ current_year }}</h2>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
         <div class="card text-white bg-primary">
             <div class="card-body">
-                <h5 class="card-title">Total Tours</h5>
-                <p class="card-text display-4">{{ total_tours }}</p>
+                <div class="card-title small">Tours</div>
+                <div class="display-6 fw-bold">{{ total_tours }}</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card text-white bg-success">
             <div class="card-body">
-                <h5 class="card-title">Total PAX</h5>
-                <p class="card-text display-4">{{ total_pax }}</p>
+                <div class="card-title small">PAX</div>
+                <div class="display-6 fw-bold">{{ total_pax }}</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
         <div class="card text-white bg-info">
             <div class="card-body">
-                <h5 class="card-title">Total Tips (CZK)</h5>
-                <p class="card-text display-4">{{ total_tips|floatformat:0 }}</p>
+                <div class="card-title small">Tips (CZK)</div>
+                <div class="display-6 fw-bold">{{ total_tips|floatformat:0 }}</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-warning">
+    <div class="col-6 col-md-3">
+        <div class="card text-white {% if total_profit >= 0 %}bg-warning{% else %}bg-danger{% endif %}">
             <div class="card-body">
-                <h5 class="card-title">Total Profit (CZK)</h5>
-                <p class="card-text display-4">{{ total_profit|floatformat:0 }}</p>
+                <div class="card-title small">Profit (CZK)</div>
+                <div class="display-6 fw-bold">{{ total_profit|floatformat:0 }}</div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row mb-4">
+<div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="card">
+        <div class="card h-100">
             <div class="card-body">
-                <h5 class="card-title">Average Tips per PAX</h5>
-                <p class="card-text display-4">{{ avg_tips_per_pax|floatformat:2 }} CZK</p>
+                <div class="text-muted small">Avg Tips / PAX</div>
+                <div class="fs-3 fw-semibold">{{ avg_tips_per_pax|floatformat:2 }} CZK</div>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card">
+        <div class="card h-100">
             <div class="card-body">
-                <h5 class="card-title">Total Payin</h5>
-                <p class="card-text display-4">{{ total_payin|floatformat:0 }} CZK</p>
+                <div class="text-muted small">Monthly Settlement</div>
+                <div class="fs-3 fw-semibold {% if total_payin < 0 %}profit-positive{% endif %}">
+                    {{ total_payin|floatformat:0 }} CZK
+                </div>
+                <div class="text-muted" style="font-size:0.75rem;">
+                    {% if total_payin < 0 %}Prague Pulse Tours pays you{% elif total_payin > 0 %}you pay Prague Pulse Tours{% else %}settled{% endif %}
+                </div>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card">
+        <div class="card h-100">
             <div class="card-body">
-                <h5 class="card-title">Profit Ratio</h5>
-                <p class="card-text display-4">
-                    {% if total_payin %}
-                    {{ total_profit|div:total_payin|floatformat:2 }}x
-                    {% else %}
-                    N/A
-                    {% endif %}
-                </p>
+                <div class="text-muted small">Profit Ratio</div>
+                <div class="fs-3 fw-semibold">
+                    {% if total_payin and total_payin > 0 %}{{ total_profit|div:total_payin|floatformat:2 }}x{% else %}N/A{% endif %}
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<h3>Tours This Month</h3>
-<div class="table-responsive">
-    <table class="table table-striped">
-        <thead>
+{# ── Tours table ──────────────────────────────────────────────────────────── #}
+<h3 class="mb-2">Tours This Month</h3>
+<div class="table-responsive mb-4">
+    <table class="table table-striped table-hover align-middle">
+        <thead class="table-dark">
             <tr>
                 <th>Date</th>
                 <th>Tour Type</th>
@@ -107,7 +116,7 @@
                 <th>Tips (CZK)</th>
                 <th>Payin (CZK)</th>
                 <th>Profit (CZK)</th>
-                <th>Tips per PAX</th>
+                <th>Tips/PAX</th>
             </tr>
         </thead>
         <tbody>
@@ -116,21 +125,62 @@
                 <td><a href="{% url 'tour-detail' tour.pk %}">{{ tour.tour_date|date:"Y-m-d" }}</a></td>
                 <td>{{ tour.tour_type }}</td>
                 <td>{{ tour.pax_count }}</td>
-                <td>{% with total_tips=tour.tips.all|sum_tips_czk %}{{ total_tips|default:"0"|floatformat:2 }}{% endwith %}</td>
-                <td>{{ tour.calculate_payin|floatformat:2 }}</td>
-                <td>{{ tour.calculate_profit|floatformat:2 }}</td>
+                <td>{{ tour.get_total_tips|floatformat:0 }}</td>
+                <td>{{ tour.calculate_payin|floatformat:0 }}</td>
+                <td class="{% if tour.calculate_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
+                    {{ tour.calculate_profit|floatformat:0 }}
+                </td>
                 <td>{{ tour.calculate_tips_per_pax|floatformat:2 }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="7" class="text-center">No tours found for this month</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
-{% else %}
-    <p>No tours found for the selected month.</p>
+
+{# ── Tour type breakdown ───────────────────────────────────────────────────── #}
+{% if breakdown %}
+<h3 class="mb-2">Breakdown by Tour Type</h3>
+<div class="table-responsive">
+    <table class="table table-sm table-bordered">
+        <thead class="table-light">
+            <tr>
+                <th>Tour Type</th>
+                <th>Tours</th>
+                <th>PAX</th>
+                <th>Tips (CZK)</th>
+                <th>Settlement (CZK)</th>
+                <th>Profit (CZK)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for type_name, b in breakdown.items %}
+            <tr>
+                <td>{{ type_name }}</td>
+                <td>{{ b.tours }}</td>
+                <td>{{ b.pax }}</td>
+                <td>{{ b.tips|floatformat:0 }}</td>
+                <td>{{ b.payin|floatformat:0 }}</td>
+                <td class="{% if b.profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
+                    {{ b.profit|floatformat:0 }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endif %}
 
+{% else %}
+<p class="text-muted">No tours found for the selected period.</p>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // When the year changes, re-submit the form so the month list updates server-side
+    document.getElementById('yearSelect').addEventListener('change', function () {
+        document.getElementById('statsForm').submit();
+    });
+</script>
 {% endblock %}

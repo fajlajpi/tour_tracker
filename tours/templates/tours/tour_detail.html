@@ -1,61 +1,234 @@
 {% extends 'tours/base.html' %}
-{% load tour_extras %}
+{% load crispy_forms_tags %}
 
 {% block content %}
-<div class="container">
-    <h1>Tour Details</h1>
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+    <h1 class="mb-0">{{ tour.tour_type }} — {{ tour.tour_date|date:"Y-m-d" }}</h1>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'tour-update' pk=tour.pk %}" class="btn btn-outline-secondary btn-sm">Edit Tour</a>
+        <a href="{% url 'tour-delete' pk=tour.pk %}" class="btn btn-outline-danger btn-sm">Delete Tour</a>
+        <a href="{% url 'tour-list' %}" class="btn btn-outline-dark btn-sm">Back</a>
+    </div>
+</div>
 
-    <dl class="row">
-        <dt class="col-sm-3">Tour Type</dt>
-        <dd class="col-sm-9">{{ tour.tour_type }}</dd>
+{# ── Warnings ─────────────────────────────────────────────────────────────── #}
+{% if warnings %}
+<div class="alert alert-warning py-2">
+    <strong>⚠ Warnings</strong>
+    <ul class="mb-0 mt-1">
+        {% for w in warnings %}<li>{{ w }}</li>{% endfor %}
+    </ul>
+</div>
+{% endif %}
 
-        <dt class="col-sm-3">Date and Time</dt>
-        <dd class="col-sm-9">{{ tour.date_time }}</dd>
+{# ── Tour info + financials ────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Tour Info</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Tour Type</dt>
+                    <dd class="col-sm-8">{{ tour.tour_type }}</dd>
+                    <dt class="col-sm-4">Date</dt>
+                    <dd class="col-sm-8">{{ tour.tour_date|date:"Y-m-d" }}</dd>
+                    <dt class="col-sm-4">PAX</dt>
+                    <dd class="col-sm-8">{{ tour.pax_count }}</dd>
+                    {% if tour.notes %}
+                    <dt class="col-sm-4">Notes</dt>
+                    <dd class="col-sm-8">{{ tour.notes }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
 
-        <dt class="col-sm-3">Pax Count</dt>
-        <dd class="col-sm-9">{{ tour.pax_count }}</dd>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Financials</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-6">Total Tips</dt>
+                    <dd class="col-sm-6">{{ total_tips_czk|floatformat:2 }} CZK</dd>
+                    <dt class="col-sm-6">Tips per PAX</dt>
+                    <dd class="col-sm-6">{{ tips_per_pax|floatformat:2 }} CZK</dd>
 
-        <dt class="col-sm-3">Notes</dt>
-        <dd class="col-sm-9">{{ tour.notes }}</dd>
+                    {% if tour.tour_type.is_food_tour %}
+                        <dt class="col-sm-6">Fixed Income</dt>
+                        <dd class="col-sm-6">{{ tour.fixed_income|default:"—"|floatformat:2 }} CZK</dd>
+                    {% else %}
+                        <dt class="col-sm-6">Payin</dt>
+                        <dd class="col-sm-6">{{ payin|floatformat:2 }} CZK</dd>
+                    {% endif %}
 
-        <dt class="col-sm-3">Payin</dt>
-        <dd class="col-sm-9">{{ payin }}</dd>
+                    <dt class="col-sm-6 border-top pt-2">Profit</dt>
+                    <dd class="col-sm-6 border-top pt-2
+                        {% if profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
+                        {{ profit|floatformat:2 }} CZK
+                    </dd>
 
-        <dt class="col-sm-3">Total Tips (CZK)</dt>
-        <dd class="col-sm-9">{{ total_tips_czk }}</dd>
+                    {% if tour.tour_type.is_food_tour and total_expenses %}
+                    <dt class="col-sm-6 text-muted small pt-1">Expenses (reimbursed)</dt>
+                    <dd class="col-sm-6 text-muted small pt-1">{{ total_expenses|floatformat:2 }} CZK</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
 
-        <dt class="col-sm-3">Profit</dt>
-        <dd class="col-sm-9">{{ profit }}</dd>
+{# ── Food tour expense breakdown ───────────────────────────────────────────── #}
+{% if tour.tour_type.is_food_tour %}
+<div class="card mb-4">
+    <div class="card-header fw-semibold">Expense Breakdown <span class="fw-normal text-muted small">(reimbursed at month end)</span></div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead class="table-light">
+                <tr><th>Location</th><th class="text-end">Amount (CZK)</th></tr>
+            </thead>
+            <tbody>
+                {% if tour.expense_1_amount %}
+                <tr>
+                    <td>{{ tour.expense_1_name|default:"Expense 1" }}</td>
+                    <td class="text-end">{{ tour.expense_1_amount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                {% if tour.expense_2_amount %}
+                <tr>
+                    <td>{{ tour.expense_2_name|default:"Expense 2" }}</td>
+                    <td class="text-end">{{ tour.expense_2_amount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                {% if tour.expense_3_amount %}
+                <tr>
+                    <td>{{ tour.expense_3_name|default:"Expense 3" }}</td>
+                    <td class="text-end">{{ tour.expense_3_amount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                {% if not tour.expense_1_amount and not tour.expense_2_amount and not tour.expense_3_amount %}
+                <tr><td colspan="2" class="text-muted text-center py-2">No expenses recorded.</td></tr>
+                {% endif %}
+            </tbody>
+            {% if total_expenses %}
+            <tfoot class="table-light">
+                <tr><th>Total</th><th class="text-end">{{ total_expenses|floatformat:2 }} CZK</th></tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% endif %}
 
-        <dt class="col-sm-3">Tips per Pax</dt>
-        <dd class="col-sm-9">{{ tips_per_pax|floatformat:2 }}</dd>
-    </dl>
-
-    <h2>Tips</h2>
-    <a href="{% url 'tip-create' tour_id=tour.pk %}" class="btn btn-success mb-3">Add Tip</a>
-    {% if tips %}
-        <table class="table">
-            <thead>
+{# ── Tips table ───────────────────────────────────────────────────────────── #}
+<div class="card mb-3">
+    <div class="card-header fw-semibold">Tips</div>
+    <div class="card-body p-0">
+        {% if tips %}
+        <table class="table table-sm mb-0" id="tips-table">
+            <thead class="table-light">
                 <tr>
                     <th>Amount</th>
                     <th>Currency</th>
-                    <th>Amount in CZK</th>
+                    <th>In CZK</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
                 {% for tip in tips %}
-                <tr>
-                    <td>{{ tip.amount }}</td>
+
+                {# ── View row ── #}
+                <tr id="tip-view-{{ tip.pk }}">
+                    <td>{{ tip.amount|floatformat:2 }}</td>
                     <td>{{ tip.currency }}</td>
-                    <td>{{ tip.amount_in_czk }}</td>
+                    <td>{{ tip.amount_in_czk|floatformat:2 }}</td>
+                    <td class="text-end" style="white-space:nowrap;">
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                onclick="toggleEditTip({{ tip.pk }})">Edit</button>
+                        <form method="post" action="{% url 'tip-delete' tip.pk %}" class="d-inline"
+                              onsubmit="return confirm('Delete this tip?')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                    </td>
                 </tr>
+
+                {# ── Edit row (hidden until Edit is clicked) ── #}
+                <tr id="tip-edit-{{ tip.pk }}" style="display:none;" class="table-warning">
+                    <td colspan="4">
+                        <form method="post" action="{% url 'tip-update' tip.pk %}"
+                              class="d-flex flex-wrap gap-2 align-items-end py-1">
+                            {% csrf_token %}
+                            <div>
+                                <label class="form-label form-label-sm mb-1">Amount</label>
+                                <input type="number" name="amount" value="{{ tip.amount }}"
+                                       step="0.01" class="form-control form-control-sm"
+                                       style="width:110px;">
+                            </div>
+                            <div>
+                                <label class="form-label form-label-sm mb-1">Currency</label>
+                                <select name="currency" class="form-select form-select-sm" style="width:90px;">
+                                    {% for c in currencies %}
+                                    <option value="{{ c.pk }}"
+                                        {% if c.pk == tip.currency.pk %}selected{% endif %}>
+                                        {{ c.code }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-success">Save</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    onclick="toggleEditTip({{ tip.pk }})">Cancel</button>
+                        </form>
+                    </td>
+                </tr>
+
                 {% endfor %}
             </tbody>
+            <tfoot class="table-light">
+                <tr>
+                    <th colspan="2">Total</th>
+                    <th>{{ total_tips_czk|floatformat:2 }} CZK</th>
+                    <th></th>
+                </tr>
+            </tfoot>
         </table>
-    {% else %}
-        <p>No tips yet.</p>
-    {% endif %}
-    <a href="{% url 'tour-update' pk=tour.pk %}" class="btn btn-primary">Edit</a>
-    <a href="{% url 'tour-list' %}" class="btn btn-secondary">Back to List</a>
+        {% else %}
+        <p class="text-muted m-3">No tips recorded yet.</p>
+        {% endif %}
+    </div>
 </div>
+
+{# ── Quick-add tip ─────────────────────────────────────────────────────────── #}
+<div class="card">
+    <div class="card-header fw-semibold">Add Tip</div>
+    <div class="card-body">
+        <form method="post" action="{% url 'tip-create' tour_id=tour.pk %}"
+              class="row g-2 align-items-end">
+            {% csrf_token %}
+            <div class="col-auto">
+                <label class="form-label mb-1">Amount</label>
+                {{ tip_form.amount }}
+            </div>
+            <div class="col-auto">
+                <label class="form-label mb-1">Currency</label>
+                {{ tip_form.currency }}
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-success">Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleEditTip(pk) {
+        var viewRow = document.getElementById('tip-view-' + pk);
+        var editRow = document.getElementById('tip-edit-' + pk);
+        var editing = editRow.style.display !== 'none';
+        viewRow.style.display = editing ? '' : 'none';
+        editRow.style.display = editing ? 'none' : '';
+    }
+</script>
 {% endblock %}
